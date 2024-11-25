@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Theory Explorer</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2ecc71;
+            --background-color: #f4f4f4;
+            --text-color: #333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .app-title {
+            text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 30px;
+        }
+
+        .color-theory-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .theme-selector, .palette-generator, .artwork-creator, .color-analysis {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .theme-select, .palette-btn {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .color-palette {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+
+        .color-swatch {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.1);
+        }
+
+        #artCanvas {
+            border: 2px solid var(--primary-color);
+            background-color: white;
+            max-width: 100%;
+        }
+
+        .tool-section {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+
+        .color-analysis {
+            background-color: #e8f4f8;
+        }
+
+        @media (max-width: 768px) {
+            .color-theory-section {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="app-title">Color Theory Explorer</h1>
+        
+        <div class="color-theory-section">
+            <!-- Theme Selection -->
+            <div class="theme-selector">
+                <h2>Choose Theme</h2>
+                <select id="themeSelect" class="theme-select">
+                    <option value="warm">Warm Colors</option>
+                    <option value="cool">Cool Colors</option>
+                    <option value="pastel">Pastel</option>
+                    <option value="monochrome">Monochrome</option>
+                </select>
+                <button id="generatePaletteBtn" class="palette-btn">Generate Palette</button>
+                
+                <div id="colorPalette" class="color-palette">
+                    <!-- Color swatches will be dynamically added here -->
+                </div>
+            </div>
+
+            <!-- Artwork Creator -->
+            <div class="artwork-creator">
+                <h2>Create Artwork</h2>
+                <canvas id="artCanvas" width="500" height="400"></canvas>
+                
+                <div class="tool-section">
+                    <select id="brushSize">
+                        <option value="2">Small Brush</option>
+                        <option value="5">Medium Brush</option>
+                        <option value="10">Large Brush</option>
+                    </select>
+                    <button id="clearCanvasBtn">Clear Canvas</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Color Analysis -->
+        <div class="color-analysis">
+            <h2>Color Analysis</h2>
+            <div id="analysisResults">
+                <!-- Analysis results will be displayed here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Color Themes
+        const colorThemes = {
+            warm: ['#FF6B6B', '#FFA726', '#FF5722'],
+            cool: ['#2196F3', '#4CAF50', '#009688'],
+            pastel: ['#FFD1DC', '#FFEBCD', '#E6E6FA'],
+            monochrome: ['#E0E0E0', '#A0A0A0', '#404040']
+        };
+
+        // DOM Elements
+        const themeSelect = document.getElementById('themeSelect');
+        const generatePaletteBtn = document.getElementById('generatePaletteBtn');
+        const colorPalette = document.getElementById('colorPalette');
+        const artCanvas = document.getElementById('artCanvas');
+        const brushSize = document.getElementById('brushSize');
+        const clearCanvasBtn = document.getElementById('clearCanvasBtn');
+        const analysisResults = document.getElementById('analysisResults');
+
+        const ctx = artCanvas.getContext('2d');
+        let currentColor = '#000000';
+        let isDrawing = false;
+
+        // Generate Palette
+        generatePaletteBtn.addEventListener('click', () => {
+            const theme = themeSelect.value;
+            const colors = colorThemes[theme];
+            
+            colorPalette.innerHTML = '';
+            colors.forEach(color => {
+                const swatch = document.createElement('div');
+                swatch.className = 'color-swatch';
+                swatch.style.backgroundColor = color;
+                swatch.addEventListener('click', () => {
+                    currentColor = color;
+                    performColorAnalysis(color);
+                });
+                colorPalette.appendChild(swatch);
+            });
+        });
+
+        // Canvas Drawing
+        artCanvas.addEventListener('mousedown', startDrawing);
+        artCanvas.addEventListener('mousemove', draw);
+        artCanvas.addEventListener('mouseup', stopDrawing);
+        artCanvas.addEventListener('mouseout', stopDrawing);
+
+        function startDrawing(e) {
+            isDrawing = true;
+            draw(e);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const rect = artCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            ctx.beginPath();
+            ctx.fillStyle = currentColor;
+            ctx.arc(x, y, brushSize.value, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+            ctx.beginPath();
+        }
+
+        // Clear Canvas
+        clearCanvasBtn.addEventListener('click', () => {
+            ctx.clearRect(0, 0, artCanvas.width, artCanvas.height);
+        });
+
+        // Color Analysis
+        function performColorAnalysis(color) {
+            const brightness = calculateBrightness(color);
+            const analysis = `
+                <p>Selected Color: ${color}</p>
+                <p>Brightness: ${brightness}</p>
+                <p>Psychological Effect: ${getColorPsychology(color)}</p>
+            `;
+            analysisResults.innerHTML = analysis;
+        }
+
+        function calculateBrightness(color) {
+            const hex = color.replace('#', '');
+            const r = parseInt(hex.substring(0, 2), 16);
+            const g = parseInt(hex.substring(2, 4), 16);
+            const b = parseInt(hex.substring(4, 6), 16);
+            return Math.round((r * 299 + g * 587 + b * 114) / 1000);
+        }
+
+        function getColorPsychology(color) {
+            // Simple color psychology based on color
+            switch (color) {
+                case '#FF6B6B': return 'Energizing and passionate.';
+                case '#FFA726': return 'Warm and inviting.';
+                case '#FF5722': return 'Exciting and vibrant.';
+                case '#2196F3': return 'Calm and trustworthy.';
+                case '#4CAF50': return 'Refreshing and natural.';
+                case '#009688': return 'Balanced and harmonious.';
+                case '#FFD1DC': return 'Soft and gentle.';
+                case '#FFEBCD': return 'Warm and comforting.';
+                case '#E6E6FA': return 'Peaceful and serene.';
+                case '#E0E0E0': return 'Neutral and balanced.';
+                case '#A0A0A0': return 'Sophisticated and modern.';
+                case '#404040': return 'Strong and powerful.';
+                default: return 'No psychological effect found.';
+            }
+        }
+    </script>
+</ html
+</body>
+</html>
